@@ -22,6 +22,7 @@ from mas_arena.evaluators.registry import register_benchmark
     normalization_keys={
         "id": "id",
         "problem": "question",
+        "context": "context",
         "solution": "answer",
     }
 )
@@ -95,13 +96,13 @@ class HotpotQAEvaluator(BaseEvaluator):
             id=str(uuid.uuid4()),
             name=f"{self.name.upper()}_Evaluation",
             inputs={
-                "question": problem["question"],
+                "question": problem["problem"],
                 "context": problem["context"]
             },
             outputs={
                 "prediction": final_answer,
                 "extracted_answer": extracted_answer,
-                "expected": problem["answer"],
+                "expected": problem["solution"],
                 "score": score,
                 "passed": score >= 0.3,  # HotpotQA uses 0.3 as threshold
             },
@@ -129,7 +130,7 @@ class HotpotQAEvaluator(BaseEvaluator):
         context_str = "\n".join(" ".join(paragraph) for paragraph in paragraphs)
         
         # Calculate score
-        score, extracted_answer = self.calculate_score(problem["answer"], final_answer)
+        score, extracted_answer = self.calculate_score(problem["solution"], final_answer)
         
         # # Create LangSmith run
         # run = self.create_run(problem, final_answer, extracted_answer, score)
@@ -138,9 +139,9 @@ class HotpotQAEvaluator(BaseEvaluator):
         # Log mismatch if score is too low
         if score < 0.3:
             with open(f"{self.log_path}/mismatches.log", "a") as f:
-                f.write(f"\nQuestion: {problem['question']}\n")
+                f.write(f"\nQuestion: {problem['problem']}\n")
                 f.write(f"Context: {context_str}\n")
-                f.write(f"Expected: {problem['answer']}\n")
+                f.write(f"Expected: {problem['solution']}\n")
                 f.write(f"Predicted: {final_answer}\n")
                 f.write(f"Score: {score}\n")
         
