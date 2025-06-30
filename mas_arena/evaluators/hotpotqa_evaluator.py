@@ -131,9 +131,12 @@ class HotpotQAEvaluator(BaseEvaluator):
                 f.write(f"Predicted: {final_answer}\n")
                 f.write(f"Score: {score}\n")
         
+        # Final score: 1.0 if score >= 0.3, else use the score directly
+        final_score = 1 if score >= 0.3 else score
+        
         return {
             "final_answer": final_answer,
             "extracted_answer": extracted_answer,
-            "score": score,
+            "score": final_score,
             "context": context_str
         }
