@@ -4,10 +4,7 @@ HotpotQA Evaluator
 This module provides a standalone evaluator for HotpotQA (Multi-hop Question Answering) problems.
 """
 
-import re
-import string
 import time
-from collections import Counter
 from typing import Dict, Any, Tuple
 
 from langsmith.evaluation import RunEvaluator
@@ -15,7 +12,7 @@ from langsmith.schemas import Run
 
 from mas_arena.evaluators.base_evaluator import BaseEvaluator
 from mas_arena.evaluators.registry import register_benchmark
-from mas_arena.evaluators.utils import extract_answer_generic
+from mas_arena.evaluators.utils import extract_answer_generic, calculate_f1_score, normalize_answer
 
 
 @register_benchmark(
@@ -60,20 +57,7 @@ class HotpotQAEvaluator(BaseEvaluator):
         Returns:
             Normalized answer string
         """
-        def remove_articles(text):
-            return re.sub(r"\b(a|an|the)\b", " ", text)
-            
-        def white_space_fix(text):
-            return " ".join(text.split())
-            
-        def remove_punc(text):
-            exclude = set(string.punctuation)
-            return "".join(ch for ch in text if ch not in exclude)
-            
-        def lower(text):
-            return text.lower()
-            
-        return white_space_fix(remove_articles(remove_punc(lower(s))))
+        return normalize_answer(s)
         
     def calculate_score(self, ground_truth: str, prediction: str) -> Tuple[float, str]:
         """
@@ -84,24 +68,11 @@ class HotpotQAEvaluator(BaseEvaluator):
             prediction: The predicted answer
             
         Returns:
-            Tuple of (f1_score, prediction)
+            Tuple of (f1_score, extracted_answer)
         """
         extracted_answer = self.extract_answer(prediction)
-        
-        prediction_tokens = self.normalize_answer(extracted_answer).split()
-        ground_truth_tokens = self.normalize_answer(ground_truth).split()
-        
-        common = Counter(prediction_tokens) & Counter(ground_truth_tokens)
-        num_same = sum(common.values())
-        
-        if num_same == 0:
-            return 0, extracted_answer
-            
-        precision = 1.0 * num_same / len(prediction_tokens)
-        recall = 1.0 * num_same / len(ground_truth_tokens)
-        f1 = (2 * precision * recall) / (precision + recall)
-        
-        return f1, extracted_answer
+        f1_score = calculate_f1_score(ground_truth, extracted_answer)
+        return f1_score, extracted_answer
         
     def create_run(self, problem: Dict[str, Any], final_answer: str, extracted_answer: str, score: float) -> Run:
         """Create a LangSmith run for evaluation"""
