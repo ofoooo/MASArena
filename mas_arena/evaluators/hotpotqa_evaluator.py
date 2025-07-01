@@ -18,7 +18,7 @@ from mas_arena.evaluators.utils import extract_answer_generic, calculate_f1_scor
 @register_benchmark(
     name="hotpotqa",
     normalization_keys={
-        "id": "id",
+        "id": "_id",
         "problem": "question",
         "context": "context",
         "solution": "answer",
