@@ -5,6 +5,7 @@ from typing import Optional, Type, Any, Union, Coroutine, List, Tuple
 from pydantic import Field
 
 from mas_arena.agents import AgentSystem
+from mas_arena.evaluators.mbpp_evaluator import MBPPEvaluator
 from mas_arena.utils.llm_parser import LLMOutputParser
 import json
 import asyncio
@@ -218,7 +219,7 @@ class ReflectionTestOp(OperatorOutput):
                                          description="Corrective solution for code execution errors or test case failures")
 
 
-TEST_SUPPORTED_EVALUATORS = [HumanEvalEvaluator]
+TEST_SUPPORTED_EVALUATORS = [HumanEvalEvaluator,MBPPEvaluator]
 
 
 class Test(Operator):

@@ -37,6 +37,6 @@ class EvaluationUtils:
         evaluator = WorkflowRunner(agent=optimizer.executor_agent)
 
         score, avg_cost, total_cost, all_failed = await evaluator.graph_evaluate_async(optimizer.evaluator,
-                                                                                           optimizer.graph,
-                                                                                           is_test=True)
+                                                                                       optimizer.graph,
+                                                                                       is_test=True)
         return score, avg_cost, total_cost

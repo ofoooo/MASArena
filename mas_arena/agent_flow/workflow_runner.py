@@ -24,16 +24,7 @@ class WorkflowRunner:
                                    max_concurrent_tasks: int = 20) -> Tuple[float, float, float]:
         configured_graph = self._configure_graph(graph=graph, evaluator=evaluator)
 
-        # get data for evaluation
-        from mas_arena.evaluators import BENCHMARKS
-        benchmark_config = BENCHMARKS[evaluator.name]
-        data_path = benchmark_config.get("data_path", f"data/{evaluator.name}_test.jsonl")
-        data = []
-        try:
-            with open(data_path, "r") as f:
-                data = [json.loads(line) for line in f]
-        except FileNotFoundError:
-            raise FileNotFoundError(f"Data file not found: {data_path}")
+        data = evaluator.get_test_data(sample_size=50) if is_test else evaluator.get_dev_data(sample_size=100)
         if not data or len(data) == 0:
             print("No data to evaluate. Returning zeros.")
             return (0.0, 0.0, 0.0, True)

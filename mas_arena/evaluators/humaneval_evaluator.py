@@ -5,13 +5,13 @@ import asyncio
 import time
 import re
 import traceback
+import random
 from threading import Thread
 from typing import Dict, Any, Tuple, Callable, List, Optional
 
 from langsmith.evaluation import RunEvaluator
 from langsmith.schemas import Run
 from mas_arena.evaluators.base_code_evaluator import BaseCodeEvaluator
-from mas_arena.evaluators.utils.normalization import normalize_problem_keys
 from mas_arena.evaluators.utils.sanitize import sanitize, code_extract
 from mas_arena.evaluators.registry import register_benchmark
 
@@ -239,3 +239,38 @@ class HumanEvalEvaluator(BaseCodeEvaluator):
         self._dev_data = self._load_dateset_from_path(f"data/{self.name}_validate.jsonl")
         self._test_data = self._load_dateset_from_path(f"data/{self.name}_test.jsonl")
         self._test_cases = self._load_dateset_from_path(f"data/{self.name}_public_test.jsonl")
+
+    def _get_data(self, data: List[dict], indices: Optional[List[int]] = None, sample_size: Optional[int] = None,
+                  seed: Optional[int] = None) -> List[dict]:
+        if indices is None:
+            indices = list(range(len(data)))
+        if sample_size is not None:
+            if seed is not None:
+                random.seed(seed)
+            indices = random.sample(indices, k=min(sample_size, len(indices)))
+        return_data = [data[idx] for idx in indices]
+        return return_data
+
+    def get_train_data(self, indices: Optional[List[int]] = None, sample_size: Optional[int] = None,
+                       seed: Optional[int] = None) -> List[dict]:
+        if self._train_data is None:
+            print(f"Train data for benchmark {type(self).__name__} is not loaded or None. Return an empty list.")
+            return []
+
+        return self._get_data(data=self._train_data, indices=indices, sample_size=sample_size, seed=seed)
+
+    def get_dev_data(self, indices: Optional[List[int]] = None, sample_size: Optional[int] = None,
+                     seed: Optional[int] = None) -> List[dict]:
+        if self._dev_data is None:
+            print(f"Dev data for benchmark {type(self).__name__} is not loaded or None. Return an empty list.")
+            return []
+
+        return self._get_data(data=self._dev_data, indices=indices, sample_size=sample_size, seed=seed)
+
+    def get_test_data(self, indices: Optional[List[int]] = None, sample_size: Optional[int] = None,
+                      seed: Optional[int] = None) -> List[dict]:
+        if self._test_data is None:
+            print(f"Test data for evaluator {type(self).__name__} is not loaded or None. Return an empty list.")
+            return []
+
+        return self._get_data(data=self._test_data, indices=indices, sample_size=sample_size, seed=seed)

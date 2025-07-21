@@ -75,9 +75,11 @@ def run_aflow_optimization(args: argparse.Namespace) -> str:
 
     optimizer.setup()
     optimizer.optimize(evaluator)
+    optimizer.test(evaluator)
     
     final_graph_path = os.path.join(args.optimized_path, "final_graph.json")
     print(f"\n[AFlow] Optimization complete. Optimized graph saved to: {final_graph_path}")
+    #todo save
     return final_graph_path
 
 
@@ -87,8 +89,8 @@ def main():
     parser.add_argument(
         "--benchmark",
         type=str,
-        default="humaneval",
-        choices=list(["humaneval"]),
+        default="mbpp",
+        choices=list(["humaneval","mbpp"]),
         help="Benchmark to run.",
     )
     parser.add_argument(
@@ -100,7 +102,7 @@ def main():
     parser.add_argument(
         "--optimized_path",
         type=str,
-        default="example/aflow/humaneval/optimization",
+        default="example/aflow/mbpp/optimization2",
         help="Path to save the optimized agent flow graph.",
     )
     parser.add_argument("--validation_rounds", type=int, default=1, help="Number of validation rounds.")
