@@ -86,7 +86,7 @@ class BenchmarkRunner:
         registry = MetricsRegistry()
         return registry
 
-    def _prepare_benchmark(self, benchmark_name, data_path, limit, agent_system, agent_config, verbose, data_id):
+    def _prepare_benchmark(self, benchmark_name, data_path, limit, agent_system, agent_config, verbose, data_id=None):
         """
         Run a benchmark with the specified configuration.
 
