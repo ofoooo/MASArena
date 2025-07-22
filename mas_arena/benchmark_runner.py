@@ -86,7 +86,7 @@ class BenchmarkRunner:
         registry = MetricsRegistry()
         return registry
 
-    def _prepare_benchmark(self, benchmark_name, data_path, limit, agent_system, agent_config, verbose):
+    def _prepare_benchmark(self, benchmark_name, data_path, limit, agent_system, agent_config, verbose, data_id):
         """
         Run a benchmark with the specified configuration.
 
@@ -130,6 +130,15 @@ class BenchmarkRunner:
                 problems = [json.loads(line) for line in f]
         except FileNotFoundError:
             raise FileNotFoundError(f"Data file not found: {data_path}")
+
+        if data_id:
+            primary_id = benchmark_config.get("normalization_keys", {}).get("id", None)
+            if primary_id is not None:
+                for problem in problems:
+                    if problem["task_id"] == data_id:
+                        problems = [problem]
+                        break
+
 
         if limit and limit < len(problems):
             problems = random.sample(problems, limit)
@@ -373,7 +382,7 @@ class BenchmarkRunner:
 
             print("=" * 80)
 
-    def run(self, benchmark_name="math", data_path=None, limit=None, agent_system="single_agent", agent_config=None, verbose=True):
+    def run(self, benchmark_name="math", data_path=None, limit=None, agent_system="single_agent", agent_config=None, verbose=True, data_id=None):
         """
         Run a benchmark sequentially. This is a wrapper around arun.
         """
@@ -384,12 +393,13 @@ class BenchmarkRunner:
             agent_system=agent_system,
             agent_config=agent_config,
             verbose=verbose,
+            data_id=data_id,
             concurrency=1  # Run sequentially
         ))
 
-    async def arun(self, benchmark_name="math", data_path=None, limit=None, agent_system="single_agent", agent_config=None, verbose=True, concurrency=10):
+    async def arun(self, benchmark_name="math", data_path=None, limit=None, agent_system="single_agent", agent_config=None, verbose=True, data_id=None,concurrency=10):
         agent, problems, benchmark_config, output_file = self._prepare_benchmark(
-            benchmark_name, data_path, limit, agent_system, agent_config, verbose
+            benchmark_name, data_path, limit, agent_system, agent_config, verbose, data_id
         )
 
         if verbose:

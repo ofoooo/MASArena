@@ -72,7 +72,7 @@ class Custom(Operator):
 
     async def __call__(self, input: str, instruction: str) -> dict:
         prompt = instruction + input
-        response = await self.agent.run_agent(problem={"problem": prompt}, parser=self.prompt, parse_mode="str")
+        response = await self.agent.run_agent(problem={"problem": prompt}, parser=self.outputs_format, parse_mode="str")
         output: Optional[LLMOutputParser] = response.get("final_answer")
         if not output:
             return {}
@@ -166,9 +166,7 @@ class ScEnsemble(Operator):
         prompt = self.prompt.format(problem=problem, solutions=solution_text)
         response = await self.agent.run_agent(problem={"problem": prompt}, parser=self.outputs_format, parse_mode="xml")
         output: Optional[LLMOutputParser] = response.get("final_answer")
-        if not output:
-            return {}
-        return output.get_structured_data()
+        return self._process_response(output, answer_mapping, solutions)
 
 class CustomCodeGenerate(Operator):
 
@@ -231,9 +229,6 @@ class Test(Operator):
         interface = "test(problem: str, solution: str, entry_point: str, evaluator = self.evaluator) -> dict with key 'result' of type bool and key 'solution' of type str. Always include 'evaluator = self.evaluator' in the input."
         super().__init__(name=name, description=description, interface=interface, agent=agent, outputs_format=TestOutput,
                          **kwargs)
-
-    # async def __call__(self, *args, **kwargs):
-    #     return await self.async_execute(*args, **kwargs)
 
     async def __call__(self, problem, solution, entry_point, evaluator: BaseEvaluator, test_loop: int = 3):
         """
@@ -417,3 +412,9 @@ class Programmer(Operator):
                     f"Code: {code}\n\nStatus: {status}, {output}"
                 )
         return {"code": code, "output": output}
+
+class LLmOptimizeOutput(LLMOutputParser):
+
+    modification: str = Field(default="", description="modification")
+    graph: str = Field(default="", description="graph")
+    prompt: str = Field(default="", description="prompt")

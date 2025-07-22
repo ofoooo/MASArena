@@ -71,7 +71,7 @@ def main():
     )
 
     parser.add_argument(
-        "--data-id", type=str, default=None,
+        "--data-id", type=int, default=None,
         help="Data ID to use (default: None)"
     )
 
@@ -193,6 +193,7 @@ def main():
                 agent_system=args.agent_system,
                 agent_config=agent_config if agent_config else None,
                 verbose=args.verbose,
+                data_id=args.data_id,
                 concurrency=args.concurrency,
             ))
         else:
@@ -202,7 +203,8 @@ def main():
                 limit=args.limit,
                 agent_system=args.agent_system,
                 agent_config=agent_config if agent_config else None,
-                verbose=args.verbose
+                verbose=args.verbose,
+                data_id=args.data_id,
             )
         logger.info(f"Benchmark summary: {summary}")
         return 0

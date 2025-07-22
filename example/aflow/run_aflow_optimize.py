@@ -70,17 +70,19 @@ def run_aflow_optimization(args: argparse.Namespace) -> str:
         validation_rounds=args.validation_rounds,
         eval_rounds=args.eval_rounds,
         max_rounds=args.max_rounds,
+        train_size=args.train_size,
+        test_size=args.test_size,
         **EXPERIMENTAL_CONFIG.get(args.benchmark, {}),
     )
 
     optimizer.setup()
     optimizer.optimize(evaluator)
     optimizer.test(evaluator)
-    
-    final_graph_path = os.path.join(args.optimized_path, "final_graph.json")
-    print(f"\n[AFlow] Optimization complete. Optimized graph saved to: {final_graph_path}")
-    #todo save
-    return final_graph_path
+
+    best_round = optimizer.find_best_performing_round()
+    best_graph_path = f"{args.optimized_path}/round_{best_round}/graph.py"
+    print(f"\n[AFlow] Optimization complete. Best workflow graph: {best_graph_path}")
+    return best_graph_path
 
 
 def main():
@@ -89,7 +91,7 @@ def main():
     parser.add_argument(
         "--benchmark",
         type=str,
-        default="mbpp",
+        default="humaneval",
         choices=list(["humaneval","mbpp"]),
         help="Benchmark to run.",
     )
@@ -102,14 +104,17 @@ def main():
     parser.add_argument(
         "--optimized_path",
         type=str,
-        default="example/aflow/mbpp/optimization2",
+        default=None,
         help="Path to save the optimized agent flow graph.",
     )
     parser.add_argument("--validation_rounds", type=int, default=1, help="Number of validation rounds.")
     parser.add_argument("--eval_rounds", type=int, default=1, help="Number of evaluation rounds.")
     parser.add_argument("--max_rounds", type=int, default=3, help="Maximum number of optimization rounds.")
+    parser.add_argument("--train_size", type=int, default=40, help="Size of the training set for evaluation.")
+    parser.add_argument("--test_size", type=int, default=20, help="Size of the test set for evaluation.")
     args = parser.parse_args()
-
+    if not args.optimized_path:
+        args.optimized_path = f"example/aflow/{args.benchmark}/optimization"
     optimized_graph_path = run_aflow_optimization(args)
     
     print("\n" + "=" * 80)
