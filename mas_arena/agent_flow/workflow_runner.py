@@ -92,5 +92,6 @@ class WorkflowRunner:
         benchmark_config = BENCHMARKS.get(evaluator.name, {})
         key_mapping = benchmark_config.get("normalization_keys", {})
         normalized_problem = normalize_problem_keys(problem, key_mapping, i)
+        # core evaluate funciton
         result = await evaluator.async_evaluate(normalized_problem, run_result)
         return result["score"] if "score" in result else 0.0

@@ -1,0 +1,7 @@
+{
+    "father node": 0,
+    "modification": "Modify workflow to include Test operator before returning the solution.",
+    "before": 0.6708211143695014,
+    "after": 0.6627565982404692,
+    "succeed": false
+}

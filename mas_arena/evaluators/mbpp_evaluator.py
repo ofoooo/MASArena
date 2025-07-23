@@ -4,13 +4,19 @@ MBPP Evaluator
 
 from __future__ import annotations
 
+import asyncio
+import re
+import time
 import traceback
 from threading import Thread
 from typing import Any, Dict, List, Tuple
 
+from langsmith.evaluation import RunEvaluator
+from langsmith.schemas import Run
 from mas_arena.evaluators.base_code_evaluator import BaseCodeEvaluator
 from mas_arena.evaluators.utils.sanitize import sanitize
 from mas_arena.evaluators.registry import register_benchmark
+from mas_arena.evaluators.utils.sanitize import sanitize, code_extract
 
 
 class TimeoutError(Exception):
@@ -105,3 +111,101 @@ class MBPPEvaluator(BaseCodeEvaluator):
             if self.config.get("verbose"):
                 self.logger.error(traceback.format_exc())
             return False, f"Execution error: {exc}"
+    
+    def _load_data(self):
+        self._train_data = []
+        self._dev_data = self._load_dateset_from_path(f"data/{self.name}_validate.jsonl")
+        self._test_data = self._load_dateset_from_path(f"data/{self.name}_test.jsonl")
+        self._test_cases = self._load_dateset_from_path(f"data/{self.name}_public_test.jsonl")
+
+    async def async_evaluate(self, problem: Dict[str, Any], run_result: Dict[str, Any]) -> Dict[str, Any]:
+        evaluate_result = await asyncio.to_thread(self.evaluate, run_result=run_result, problem=problem)
+        return evaluate_result
+    
+    def calculate_score(
+        self, test_code: str, prediction: str, entry_point: str
+    ) -> Tuple[float, str, str]:
+        """
+        Return ``(score, code_used_for_test, message)`` where *score* is 1.0 on success, 0.0 otherwise.
+        """
+        passed, message = self.check_solution(prediction, test_code, entry_point)
+        return (1.0 if passed else 0.0), prediction, message
+        
+    def create_run(
+        self,
+        problem: Dict[str, Any],
+        final_answer: str,
+        extracted_answer: str,
+        score: float,
+        message: str,
+    ) -> Run:
+        """Package the evaluation result as a ``Run`` object for LangSmith."""
+        import uuid
+
+        return Run(
+            id=str(uuid.uuid4()),
+            name=f"{self.name.upper()}_Evaluation",
+            inputs={"problem": problem["problem"], "task_id": problem["id"]},
+            outputs={
+                "prediction": final_answer,
+                "extracted_answer": extracted_answer,
+                "expected": problem["test"],
+                "score": score,
+                "message": message,
+                "passed": score == 1.0,
+            },
+            run_type="evaluation",
+            start_time=time.strftime("%Y-%m-%dT%H:%M:%S"),
+            trace_id=str(uuid.uuid4()),
+        )
+
+    def evaluate(self, problem: Dict[str, Any], run_result: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Main entry point – keeps the outer interface unchanged.
+        Consumes one *problem* dict and the model *run_result*, returns a detailed evaluation dict.
+        """
+        final_answer = run_result.get("final_answer", "")
+        extracted_answer = final_answer
+        if not run_result.get("extracted"):
+            extracted_answer = self.extract_code(final_answer)
+
+        score, extracted_answer, message = self.calculate_score(
+            problem["test"], extracted_answer, problem["entry_point"]
+        )
+
+        run = self.create_run(problem, final_answer, extracted_answer, score, message)
+        run_evaluation = self.run_evaluator.evaluate_run(run=run)
+
+        return {
+            "final_answer": final_answer,
+            "extracted_answer": extracted_answer,
+            "score": score,
+            "message": message,
+            "run_evaluation": run_evaluation,
+        }
+
+    def extract_test_cases_with_entry_point(self, entry_point: str):
+        """
+        Extract test cases with the given entry point.
+        """
+
+        hardcoded_cases = {
+            "find_zero": "",
+            "decode_cyclic": "",
+            "decode_shift": "",
+            "by_length": "",
+            "add": "",
+            "triangle_area": "",
+            "correct_bracketing": "",
+            "solve": "",
+            "sum_squares": "",
+            "starts_one_ends": "",
+        }
+        if entry_point in hardcoded_cases:
+            return hardcoded_cases[entry_point]
+
+        for case in self._test_cases:
+            if case["entry_point"] == entry_point:
+                return case["test"]
+
+        return None

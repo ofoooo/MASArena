@@ -93,7 +93,7 @@ def main():
     optimizer_group.add_argument(
         "--optimized_path",
         type=str,
-        default="example/aflow/humaneval/optimization",
+        default=None,
         help="Path to save the optimized agent flow graph.",
     )
     optimizer_group.add_argument("--validation_rounds", type=int, default=1, help="Number of validation rounds.")
@@ -106,6 +106,10 @@ def main():
     if args.run_optimizer:
         if args.run_optimizer == "aflow":
             from example.aflow.run_aflow_optimize import run_aflow_optimization
+
+            if args.optimized_path is None:
+                args.optimized_path = f"example/aflow/{args.benchmark}/optimization"
+
             print("\n" + "=" * 80)
             print(f"Running AFlow Optimizer ({datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')})")
             print("=" * 80)

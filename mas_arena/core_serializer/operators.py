@@ -15,6 +15,7 @@ from mas_arena.utils.data_utils import test_case_2_test_function
 from mas_arena.core_serializer.operator_prompts import *
 from mas_arena.evaluators.base_evaluator import BaseEvaluator
 from mas_arena.evaluators.humaneval_evaluator import HumanEvalEvaluator
+from mas_arena.evaluators.mbpp_evaluator import MBPPEvaluator
 from mas_arena.evaluators.utils import sanitize
 
 class OperatorOutput(LLMOutputParser):
@@ -218,7 +219,7 @@ class ReflectionTestOp(OperatorOutput):
                                          description="Corrective solution for code execution errors or test case failures")
 
 
-TEST_SUPPORTED_EVALUATORS = [HumanEvalEvaluator]
+TEST_SUPPORTED_EVALUATORS = [HumanEvalEvaluator, MBPPEvaluator]
 
 
 class Test(Operator):

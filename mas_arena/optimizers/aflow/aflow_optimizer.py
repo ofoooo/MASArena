@@ -33,7 +33,7 @@ class AFlowOptimizer(Optimizer):
     based on performance feedback, driven by an optimizer LLM.
     """
     question_type: str = Field(
-        description="The type of question to optimize the workflow for, e.g., qa, match, code, etc.")
+        description="The type of question to optimize the workflow for, e.g., qa, math, code, etc.")
     graph_path: str = Field(
         description="The folder of the initial workflow graph. This folder must contain `graph.py` and `prompt.py` files.")
     optimized_path: str | None = Field(

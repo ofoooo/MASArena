@@ -88,7 +88,7 @@ def main():
         "--benchmark",
         type=str,
         default="humaneval",
-        choices=list(["humaneval"]),
+        choices=list(["humaneval", "mbpp"]),
         help="Benchmark to run.",
     )
     parser.add_argument(
