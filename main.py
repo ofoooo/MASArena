@@ -99,6 +99,8 @@ def main():
     optimizer_group.add_argument("--validation_rounds", type=int, default=1, help="Number of validation rounds.")
     optimizer_group.add_argument("--eval_rounds", type=int, default=1, help="Number of evaluation rounds.")
     optimizer_group.add_argument("--max_rounds", type=int, default=3, help="Maximum number of optimization rounds.")
+    optimizer_group.add_argument("--train_size", type=int, default=40, help="Size of the training set for evaluation.")
+    optimizer_group.add_argument("--test_size", type=int, default=20, help="Size of the test set for evaluation.")
 
     # Parse arguments
     args = parser.parse_args()
