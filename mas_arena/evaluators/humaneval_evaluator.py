@@ -14,6 +14,7 @@ from langsmith.schemas import Run
 from mas_arena.evaluators.base_code_evaluator import BaseCodeEvaluator
 from mas_arena.evaluators.utils.sanitize import sanitize, code_extract
 from mas_arena.evaluators.registry import register_benchmark
+from mas_arena.evaluators.utils.timeout import run_with_timeout, TimeoutError
 
 
 @register_benchmark(
@@ -29,40 +30,11 @@ from mas_arena.evaluators.registry import register_benchmark
 class HumanEvalEvaluator(BaseCodeEvaluator):
     """Evaluator for HumanEval problems"""
 
-    class TimeoutError(Exception):
-        """Raised when execution exceeds the allowed time limit."""
-
     def __init__(self, name: str, config: Dict[str, Any] = None):
         super().__init__(name, config) 
 
         # LangSmith evaluator for packaging the evaluation run
         self.run_evaluator = RunEvaluator()
-
-    def run_with_timeout(self, func, args, timeout: int = 60):
-        """
-        Execute ``func(*args)`` in a separate thread
-        and abort if it does not finish within *timeout* seconds.
-        """
-        result: list[Any] = []
-        exception: list[BaseException] = []
-
-        def target():
-            try:
-                result.append(func(*args))
-            except BaseException as e:
-                exception.append(e)
-
-        thread = Thread(target=target, daemon=True)
-        thread.start()
-        thread.join(timeout)
-
-        if thread.is_alive():
-            raise self.TimeoutError("Execution timed out")
-
-        if exception:
-            raise exception[0]
-
-        return result[0] if result else None
 
     def extract_code(self, text: str) -> str:
         """
@@ -126,10 +98,10 @@ class HumanEvalEvaluator(BaseCodeEvaluator):
             check_fn = env["check"]
 
             # If ``check()`` raises, the except block will handle it
-            self.run_with_timeout(check_fn, (candidate_fn,), timeout=60)
+            run_with_timeout(check_fn, (candidate_fn,), timeout=60)
             return True, "All tests passed"
 
-        except self.TimeoutError as te:
+        except TimeoutError as te:
             msg = str(te)
         except AssertionError as ae:
             msg = f"Test failed: {ae}"
@@ -232,45 +204,3 @@ class HumanEvalEvaluator(BaseCodeEvaluator):
                 return case["test"]
 
         return None
-
-    def _load_data(self):
-
-        self._train_data = []
-        self._dev_data = self._load_dateset_from_path(f"data/{self.name}_validate.jsonl")
-        self._test_data = self._load_dateset_from_path(f"data/{self.name}_test.jsonl")
-        self._test_cases = self._load_dateset_from_path(f"data/{self.name}_public_test.jsonl")
-
-    def _get_data(self, data: List[dict], indices: Optional[List[int]] = None, sample_size: Optional[int] = None,
-                  seed: Optional[int] = None) -> List[dict]:
-        if indices is None:
-            indices = list(range(len(data)))
-        if sample_size is not None:
-            if seed is not None:
-                random.seed(seed)
-            indices = random.sample(indices, k=min(sample_size, len(indices)))
-        return_data = [data[idx] for idx in indices]
-        return return_data
-
-    def get_train_data(self, indices: Optional[List[int]] = None, sample_size: Optional[int] = None,
-                       seed: Optional[int] = None) -> List[dict]:
-        if self._train_data is None:
-            print(f"Train data for benchmark {type(self).__name__} is not loaded or None. Return an empty list.")
-            return []
-
-        return self._get_data(data=self._train_data, indices=indices, sample_size=sample_size, seed=seed)
-
-    def get_dev_data(self, indices: Optional[List[int]] = None, sample_size: Optional[int] = None,
-                     seed: Optional[int] = None) -> List[dict]:
-        if self._dev_data is None:
-            print(f"Dev data for benchmark {type(self).__name__} is not loaded or None. Return an empty list.")
-            return []
-
-        return self._get_data(data=self._dev_data, indices=indices, sample_size=sample_size, seed=seed)
-
-    def get_test_data(self, indices: Optional[List[int]] = None, sample_size: Optional[int] = None,
-                      seed: Optional[int] = None) -> List[dict]:
-        if self._test_data is None:
-            print(f"Test data for evaluator {type(self).__name__} is not loaded or None. Return an empty list.")
-            return []
-
-        return self._get_data(data=self._test_data, indices=indices, sample_size=sample_size, seed=seed)
