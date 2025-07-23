@@ -1,7 +1,0 @@
-{
-    "father node": 2,
-    "modification": "Added ScEnsemble operator for enhanced solution selection, applied conditionally based on test outcome.\nModified lines in the `__call__` method for this integration.",
-    "before": 0.8625954198473282,
-    "after": 0.8473282442748091,
-    "succeed": false
-}
