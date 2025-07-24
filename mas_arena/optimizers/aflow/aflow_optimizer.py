@@ -1,3 +1,5 @@
+# Acknowledgement: Modified from AFlow (https://github.com/geekan/MetaGPT/blob/main/metagpt/ext/aflow/scripts/optimizer.py) under MIT License
+
 import asyncio
 import os
 import re
@@ -71,11 +73,6 @@ class AFlowOptimizer(Optimizer):
 
         self.graph = None
         self.round = self.initial_round
-
-        # if self.optimizer_llm is None:
-        #     raise ValueError("optimizer_llm must be provided.")
-        # if self.executor_llm is None:
-        #     self.executor_llm = self.optimizer_llm
 
         if self.optimizer_agent is None:
             raise ValueError("optimizer_agent must be provided.")
