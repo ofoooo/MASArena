@@ -135,7 +135,7 @@ class BenchmarkRunner:
             primary_id = benchmark_config.get("normalization_keys", {}).get("id", None)
             if primary_id is not None:
                 for problem in problems:
-                    if problem["task_id"] == data_id:
+                    if str(problem["task_id"]) == data_id:
                         problems = [problem]
                         break
 

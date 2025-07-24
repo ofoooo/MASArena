@@ -71,7 +71,7 @@ def main():
     )
 
     parser.add_argument(
-        "--data-id", type=int, default=None,
+        "--data-id", type=str, default=None,
         help="Data ID to use (default: None)"
     )
 
