@@ -1,5 +1,7 @@
 import argparse
 import os
+import time
+
 from dotenv import load_dotenv
 from typing import Dict, Any
 
@@ -113,8 +115,14 @@ def main():
     parser.add_argument("--train_size", type=int, default=40, help="Size of the training set for evaluation.")
     parser.add_argument("--test_size", type=int, default=20, help="Size of the test set for evaluation.")
     args = parser.parse_args()
+
     if not args.optimized_path:
         args.optimized_path = f"example/aflow/{args.benchmark}/optimization"
+
+    if os.path.exists(args.optimized_path):
+        timestamp = time.strftime("%Y%m%d_%H%M%S")
+        args.optimized_path = f"{args.optimized_path}_{timestamp}"
+
     optimized_graph_path = run_aflow_optimization(args)
     
     print("\n" + "=" * 80)
