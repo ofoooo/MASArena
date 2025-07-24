@@ -227,13 +227,14 @@ class AFlowOptimizer(Optimizer):
         """Ensures the files for the starting round (usually round 0) are in place."""
         if self.round == 0:
             round_zero_path = os.path.join(self.root_path, f"round_{self.round}")
-            if not os.path.exists(round_zero_path):
-                os.makedirs(round_zero_path, exist_ok=True)
-                # Copy the initial graph and prompt files to the round_0 directory
+            os.makedirs(round_zero_path, exist_ok=True)
+            # Copy the initial graph and prompt files to the round_0 directory
+            if not os.path.exists(os.path.join(round_zero_path, "graph.py")):
                 shutil.copy2(os.path.join(self.graph_path, "graph.py"), os.path.join(round_zero_path, "graph.py"))
+            if not os.path.exists(os.path.join(round_zero_path, "prompt.py")):
                 shutil.copy2(os.path.join(self.graph_path, "prompt.py"), os.path.join(round_zero_path, "prompt.py"))
-                # Update imports in the copied graph.py
-                self.graph_utils.update_prompt_import(os.path.join(round_zero_path, "graph.py"), round_zero_path)
+            # Update imports in the copied graph.py
+            self.graph_utils.update_prompt_import(os.path.join(round_zero_path, "graph.py"), round_zero_path)
 
         if not os.path.exists(os.path.join(self.root_path, f"round_{self.round}")):
             raise ValueError(f"Starting round {self.round} does not exist in {self.root_path}")
