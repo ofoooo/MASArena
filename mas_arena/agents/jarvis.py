@@ -164,17 +164,17 @@ class TaskPlanner(BasePlanner):
 
     def __init__(self, llm: BaseLanguageModel, verbose: bool = False):
         """
-        初始化任务规划器。
+        Initialize task planner.
         
         Args:
-            llm: 基础语言模型。
-            verbose: 是否启用详细日志。
+            llm: base language model.
+            verbose: whether to enable detailed logging.
         """
         llm_chain = TaskPlaningChain.from_llm(llm, verbose=verbose)
         output_parser = PlanningOutputParser()
         stop = None
         
-        # 使用pydantic的正确初始化方式
+        # use pydantic's correct initialization method
         super().__init__(
             llm_chain=llm_chain,
             output_parser=output_parser,
@@ -216,13 +216,13 @@ class ResponseGenerator:
 
     def run(self, problem: str, task_list: str, executed_task_list: str, format_prompt: str = None, **kwargs) -> str:
         """
-        运行响应生成，兼容evaluation_framework中的调用方式
+        Run response generation, compatible with the calling method in evaluation_framework.
         
         Args:
-            problem: 原始问题
-            task_list: 任务列表
-            executed_task_list: 执行结果列表
-            format_prompt: 格式化提示，用于指导输出格式
+            problem: original problem
+            task_list: task list
+            executed_task_list: execution result list
+            format_prompt: format prompt, for guiding output format
         """
         # 构建基础输入
         task_execution = f"Problem: {problem}\nTasks: {task_list}\nResults: {executed_task_list}"
@@ -320,7 +320,7 @@ class TaskPlaningChain(LLMChain):
         cls,
         llm: BaseLanguageModel,
         demos: List[Dict] = DEMONSTRATIONS,
-        verbose: bool = False,  # 改为False减少输出
+        verbose: bool = False,  # set to False to reduce output
     ) -> LLMChain:
         """Get the response parser."""
         system_template = """#1 Task Planning Stage: The AI assistant can parse user input to several tasks: [{{"task": task, "id": task_id, "dep": dependency_task_id, "args": {{"input name": text may contain <resource-dep_id>}}}}]. The special tag "dep_id" refer to the one generated text/image/audio in the dependency task (Please consider whether the dependency task generates resources of this type.) and "dep_id" must be in "dep" list. The "dep" field denotes the ids of the previous prerequisite tasks which generate a new resource that the current task relies on. The task MUST be selected from the following tools (along with tool description, input name and output type): {tools}. There may be multiple tasks of the same type. Think step by step about all the tasks needed to resolve the user's request. Parse out as few tasks as possible while ensuring that the user request can be resolved. Pay attention to the dependencies and order among tasks. If the user input can't be parsed, you need to reply empty JSON []."""  # noqa: E501
@@ -368,20 +368,20 @@ class PlanningOutputParser(BaseModel):
         """
         steps = []
         try:
-            # 尝试找到JSON数组
+            # try to find JSON array
             json_match = re.findall(r"\[.*\]", text)
             if not json_match:
-                # 如果没有找到JSON数组，返回空计划
+                # if no JSON array is found, return empty plan
                 return Plan(steps=[])
             
-            # 尝试解析JSON
+            # try to parse JSON
             try:
                 task_list = json.loads(json_match[0])
             except json.JSONDecodeError:
-                # JSON解析失败，返回空计划
+                # JSON parsing failed, return empty plan
                 return Plan(steps=[])
             
-            # 处理任务列表
+            # process task list
             for v in task_list:
                 if not isinstance(v, dict) or "task" not in v:
                     continue
@@ -396,7 +396,7 @@ class PlanningOutputParser(BaseModel):
                     steps.append(Step(v["task"], v["id"], v["dep"], v["args"], tool))
                     
         except Exception as e:
-            # 任何其他错误，返回空计划
+            # any other error, return empty plan
             pass
             
         return Plan(steps=steps)
@@ -470,12 +470,12 @@ class HuggingGPT:
 
     def run_with_trace(self, problem: str, format_prompt: str = None, **kwargs) -> Dict[str, Any]:
         """
-        运行HuggingGPT，并返回带有完整执行轨迹的结果。
+        Run HuggingGPT and return the result with the complete execution trace.
         
         Args:
-            problem: 输入问题
-            format_prompt: 格式化提示，用于指导输出格式
-            **kwargs: 其他参数
+            problem: input problem
+            format_prompt: format prompt, for guiding output format
+            **kwargs: other parameters
         """
         message_collector = MessageCollectorCallback(name=self.name)
         # Add collector to callbacks
@@ -485,11 +485,11 @@ class HuggingGPT:
         callbacks.append(message_collector)
         kwargs["callbacks"] = callbacks
 
-        # 临时禁用langchain详细输出
+        # temporarily disable langchain detailed output
         import logging
         import warnings
         
-        # 禁用各种日志输出
+        # disable various log outputs
         loggers_to_silence = [
             "langchain",
             "langchain.chains", 
@@ -503,25 +503,25 @@ class HuggingGPT:
             old_levels[logger_name] = logger.level
             logger.setLevel(logging.ERROR)
         
-        # 抑制警告
+        # suppress warnings
         warnings.filterwarnings("ignore", category=DeprecationWarning)
         
         try:
-            # 如果提供了格式化提示，则将其添加到问题中
+            # if format prompt is provided, add it to the problem
             formatted_problem = problem
             if format_prompt:
                 formatted_problem = f"{problem}\n\n{format_prompt}"
             
-            # 使用统一的task_planner
+            # use unified task_planner
             task_list = self.task_planner.plan(inputs={"input": formatted_problem, "hf_tools": self.tools}, **kwargs)
         finally:
-            # 恢复原日志级别
+            # restore original log levels
             for logger_name, old_level in old_levels.items():
                 logging.getLogger(logger_name).setLevel(old_level)
             warnings.filterwarnings("default", category=DeprecationWarning)
         
         if not task_list.steps:
-            # 同样禁用response_generator的输出
+            # disable response_generator's output again
             old_levels = {}
             for logger_name in loggers_to_silence:
                 logger = logging.getLogger(logger_name)
@@ -529,7 +529,7 @@ class HuggingGPT:
                 logger.setLevel(logging.ERROR)
             
             try:
-                # 为response_generator也传递格式化提示
+                # pass format prompt to response_generator
                 response_input = f"Problem: {problem}\nTasks: []\nResults: []"
                 if format_prompt:
                     response_input += f"\n\nFormat Requirements: {format_prompt}"
@@ -548,14 +548,14 @@ class HuggingGPT:
                 "tasks": [],
                 "executed_tasks": [],
                 "response": response,
-                "messages": message_collector.messages or [("ai", response)] # 模拟消息历史
+                "messages": message_collector.messages or [("ai", response)] # simulate message history
             }
 
-        # 执行任务
+        # execute tasks
         self.task_executor = TaskExecutor(task_list)
         execution_status = self.task_executor.run()
         
-        # 收集执行结果
+        # collect execution results
         executed_task_list = []
         for task in self.task_executor.tasks:
             executed_task_list.append({
@@ -566,7 +566,7 @@ class HuggingGPT:
                 "message": task.message
             })
         
-        # 将Plan对象转换为可序列化的格式
+        # convert Plan object to serializable format
         task_list_serializable = []
         for step in task_list.steps:
             task_list_serializable.append({
@@ -576,7 +576,7 @@ class HuggingGPT:
                 "args": step.args
             })
         
-        # 再次禁用response_generator的输出
+        # disable response_generator's output again
         old_levels = {}
         for logger_name in loggers_to_silence:
             logger = logging.getLogger(logger_name)
@@ -595,7 +595,7 @@ class HuggingGPT:
             for logger_name, old_level in old_levels.items():
                 logging.getLogger(logger_name).setLevel(old_level)
         
-        # 收集所有消息以供评估
+        # collect all messages for evaluation
         messages = message_collector.messages
         if not messages:
             messages = [("ai", response)]
