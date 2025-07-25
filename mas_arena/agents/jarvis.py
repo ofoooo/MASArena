@@ -35,7 +35,7 @@ DEMONSTRATIONS: list[dict] = []
 class MessageCollectorCallback(BaseCallbackHandler):
     """Callback to collect AIMessages and their usage metadata."""
 
-    def __init__(self, name: str = "jarvis_redesign"):
+    def __init__(self, name: str = "jarvis"):
         super().__init__()
         self.messages: List[Any] = []
         self.name = name
@@ -435,7 +435,7 @@ def load_chat_planner(llm: BaseLanguageModel) -> TaskPlanner:
 class HuggingGPT:
     """Agent for interacting with HuggingGPT - Text Processing Version."""
 
-    def __init__(self, llm: BaseLanguageModel, tools: List[BaseTool], name: str = "jarvis_redesign"):
+    def __init__(self, llm: BaseLanguageModel, tools: List[BaseTool], name: str = "jarvis"):
         self.llm = llm
         self.tools = tools
         self.name = name
@@ -607,12 +607,12 @@ class HuggingGPT:
             "messages": messages
         }
 
-class JarvisRedesignAgent(AgentSystem):
+class JarvisSingleAgent(AgentSystem):
     """
     AgentSystem wrapper for the HuggingGPT implementation.
     """
 
-    def __init__(self, name: str = "jarvis_redesign", config: Dict[str, Any] | None = None):
+    def __init__(self, name: str = "jarvis", config: Dict[str, Any] | None = None):
         super().__init__(name, config)
         self.config = config or {}
         self.model_name = self.config.get("model_name") or os.getenv("MODEL_NAME", "gpt-4o-mini")
@@ -628,7 +628,7 @@ class JarvisRedesignAgent(AgentSystem):
         Runs the HuggingGPT agent.
         """
         problem_text = problem["problem"]
-        # print(f"[Jarvis-Debug] JarvisRedesignAgent.run_agent received problem: {problem_text}")
+        # print(f"[Jarvis-Debug] JarvisSingleAgent.run_agent received problem: {problem_text}")
 
         result = await asyncio.to_thread(
             self.agent.run_with_trace,
@@ -637,7 +637,7 @@ class JarvisRedesignAgent(AgentSystem):
             **kwargs
         )
 
-        # print(f"[Jarvis-Debug] JarvisRedesignAgent.run_agent final result: {result}")
+        # print(f"[Jarvis-Debug] JarvisSingleAgent.run_agent final result: {result}")
 
         return {
             "messages": result.get("messages", []),
@@ -660,6 +660,6 @@ class JarvisRedesignAgent(AgentSystem):
 
 
 AgentSystemRegistry.register(
-    "jarvis_redesign",
-    JarvisRedesignAgent
+    "jarvis",
+    JarvisSingleAgent
 )

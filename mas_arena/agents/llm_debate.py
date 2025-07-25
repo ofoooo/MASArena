@@ -9,7 +9,6 @@ import os
 from typing import Dict, Any, List
 import contextlib
 import asyncio
-import time
 from openai import AsyncOpenAI
 from dotenv import load_dotenv
 from mas_arena.agents.base import AgentSystem, AgentSystemRegistry
@@ -79,9 +78,10 @@ class LLMDebate(AgentSystem):
                         'role': 'assistant',
                         'message_type': 'ai_response',
                         'round': round_idx + 1,
-                        'agent_id': agent_idx + 1,
+                        'agent_id': f'debate_agent_{agent_idx+1}',
                         'usage_metadata': None  # gen_math doesn't track usage
                     }
+                    print(f"agent_name: {ai_message['name']}")
                     all_messages.append(ai_message)
         
         # Extract final answers from each agent
