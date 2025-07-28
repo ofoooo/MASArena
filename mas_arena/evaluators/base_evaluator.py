@@ -11,7 +11,6 @@ import logging
 from typing import Dict, Any, List, Optional, Union
 from abc import ABCMeta
 
-
 class BaseEvaluator(metaclass=ABCMeta):
     """
     Abstract base class for evaluators.
@@ -50,16 +49,42 @@ class BaseEvaluator(metaclass=ABCMeta):
         
         # Dataset
         self.dataset = []
-        
+        self._train_data: Optional[List[dict]] = None
+        self._dev_data: Optional[List[dict]] = None
+        self._test_data: Optional[List[dict]] = None
+
+        self._load_data()
+
+    def _load_dateset_from_path(self, path: str):
+        """Load dataset from a specified path."""
+        if not path or not isinstance(path, str) or not os.path.exists(path):
+            raise ValueError(f"Invalid or non-existent path: {path}")
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                return [json.loads(line) for line in f]
+        except Exception as e:
+            self.logger.error(f"Failed to load dataset from {path}: {e}")
+            return []
+
     def _load_dataset(self):
         """Load the dataset for evaluation."""
-        try:
-            with open(self.data_path, "r", encoding="utf-8") as f:
-                self.dataset = [json.loads(line) for line in f]
-            self.logger.info(f"Loaded {len(self.dataset)} problems from {self.data_path}")
-        except Exception as e:
-            self.logger.error(f"Failed to load dataset: {e}")
-            self.dataset = []
+        return self._load_dateset_from_path(self.data_path)
+
+    def _load_data(self):
+        """Load data for the evaluator."""
+        pass
+
+    def _get_data(self, data: List[dict], indices: Optional[List[int]]=None, sample_size: Optional[int]=None, seed: Optional[int]=None) -> List[dict]:
+        raise NotImplementedError("Subclasses must implement the _get_data method")
+
+    def get_train_data(self, indices: Optional[List[int]] = None, sample_size: Optional[int] = None, seed: Optional[int] = None) -> List[dict]:
+        raise NotImplementedError("Subclasses must implement the get_test_data method")
+
+    def get_dev_data(self, indices: Optional[List[int]] = None, sample_size: Optional[int] = None, seed: Optional[int] = None) -> List[dict]:
+        raise NotImplementedError("Subclasses must implement the get_test_data method")
+
+    def get_test_data(self, indices: Optional[List[int]] = None, sample_size: Optional[int] = None, seed: Optional[int] = None) -> List[dict]:
+        raise NotImplementedError("Subclasses must implement the get_test_data method")
     
     def evaluate(self, problem: Dict[str, Any], **kwargs) -> Dict[str, Any]:
         """
@@ -116,4 +141,7 @@ class BaseEvaluator(metaclass=ABCMeta):
         with open(path, "w", encoding="utf-8") as f:
             for result in results:
                 f.write(json.dumps(result) + "\n")
-        self.logger.info(f"Saved {len(results)} evaluation results to {path}") 
+        self.logger.info(f"Saved {len(results)} evaluation results to {path}")
+
+    async def async_evaluate(self,problem:Dict[str, Any],run_result:Dict[str, Any]) -> Dict[str, Any]:
+        pass

@@ -1,17 +1,20 @@
 """
 HumanEval Evaluator
 """
-
+import asyncio
 import time
 import re
 import traceback
+import random
 from threading import Thread
-from typing import Dict, Any, Tuple
+from typing import Dict, Any, Tuple, Callable, List, Optional
+
 from langsmith.evaluation import RunEvaluator
 from langsmith.schemas import Run
 from mas_arena.evaluators.base_code_evaluator import BaseCodeEvaluator
 from mas_arena.evaluators.utils.sanitize import sanitize, code_extract
 from mas_arena.evaluators.registry import register_benchmark
+from mas_arena.evaluators.utils.timeout import run_with_timeout, TimeoutError
 
 
 @register_benchmark(
@@ -27,40 +30,11 @@ from mas_arena.evaluators.registry import register_benchmark
 class HumanEvalEvaluator(BaseCodeEvaluator):
     """Evaluator for HumanEval problems"""
 
-    class TimeoutError(Exception):
-        """Raised when execution exceeds the allowed time limit."""
-
     def __init__(self, name: str, config: Dict[str, Any] = None):
         super().__init__(name, config) 
 
         # LangSmith evaluator for packaging the evaluation run
         self.run_evaluator = RunEvaluator()
-
-    def run_with_timeout(self, func, args, timeout: int = 60):
-        """
-        Execute ``func(*args)`` in a separate thread
-        and abort if it does not finish within *timeout* seconds.
-        """
-        result: list[Any] = []
-        exception: list[BaseException] = []
-
-        def target():
-            try:
-                result.append(func(*args))
-            except BaseException as e:
-                exception.append(e)
-
-        thread = Thread(target=target, daemon=True)
-        thread.start()
-        thread.join(timeout)
-
-        if thread.is_alive():
-            raise self.TimeoutError("Execution timed out")
-
-        if exception:
-            raise exception[0]
-
-        return result[0] if result else None
 
     def extract_code(self, text: str) -> str:
         """
@@ -124,10 +98,10 @@ class HumanEvalEvaluator(BaseCodeEvaluator):
             check_fn = env["check"]
 
             # If ``check()`` raises, the except block will handle it
-            self.run_with_timeout(check_fn, (candidate_fn,), timeout=60)
+            run_with_timeout(check_fn, (candidate_fn,), timeout=60)
             return True, "All tests passed"
 
-        except self.TimeoutError as te:
+        except TimeoutError as te:
             msg = str(te)
         except AssertionError as ae:
             msg = f"Test failed: {ae}"
@@ -182,7 +156,9 @@ class HumanEvalEvaluator(BaseCodeEvaluator):
         Consumes one *problem* dict and the model *run_result*, returns a detailed evaluation dict.
         """
         final_answer = run_result.get("final_answer", "")
-        extracted_answer = self.extract_code(final_answer)
+        extracted_answer = final_answer
+        if not run_result.get("extracted"):
+            extracted_answer = self.extract_code(final_answer)
 
         score, extracted_answer, message = self.calculate_score(
             problem["test"], extracted_answer, problem["entry_point"]
@@ -198,3 +174,33 @@ class HumanEvalEvaluator(BaseCodeEvaluator):
             "message": message,
             "run_evaluation": run_evaluation,
         }
+
+    async def async_evaluate(self, problem: Dict[str, Any], run_result: Dict[str, Any]) -> Dict[str, Any]:
+        evaluate_result = await asyncio.to_thread(self.evaluate, run_result=run_result, problem=problem)
+        return evaluate_result
+
+    def extract_test_cases_with_entry_point(self, entry_point: str):
+        """
+        Extract test cases with the given entry point.
+        """
+
+        hardcoded_cases = {
+            "find_zero": "",
+            "decode_cyclic": "",
+            "decode_shift": "",
+            "by_length": "",
+            "add": "",
+            "triangle_area": "",
+            "correct_bracketing": "",
+            "solve": "",
+            "sum_squares": "",
+            "starts_one_ends": "",
+        }
+        if entry_point in hardcoded_cases:
+            return hardcoded_cases[entry_point]
+
+        for case in self._test_cases:
+            if case["entry_point"] == entry_point:
+                return case["test"]
+
+        return None

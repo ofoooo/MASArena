@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 import argparse
 import datetime
+import os
 import sys
+import time
 from pathlib import Path
 import asyncio
 
@@ -75,9 +77,70 @@ def main():
         help="Data ID to use (default: None)"
     )
 
+    # Optimizer arguments
+    optimizer_group = parser.add_argument_group("Optimizer Settings")
+    optimizer_group.add_argument(
+        "--run-optimizer",
+        type=str,
+        default=None,
+        choices=["aflow"],
+        help="Run an optimization process instead of a benchmark.",
+    )
+    optimizer_group.add_argument(
+        "--graph_path",
+        type=str,
+        default="mas_arena/configs/aflow",
+        help="Path to the agent flow graph configuration.",
+    )
+    optimizer_group.add_argument(
+        "--optimized_path",
+        type=str,
+        default=None,
+        help="Path to save the optimized agent flow graph.",
+    )
+    optimizer_group.add_argument("--validation_rounds", type=int, default=1, help="Number of validation rounds.")
+    optimizer_group.add_argument("--eval_rounds", type=int, default=1, help="Number of evaluation rounds.")
+    optimizer_group.add_argument("--max_rounds", type=int, default=3, help="Maximum number of optimization rounds.")
+    optimizer_group.add_argument("--train_size", type=int, default=40, help="Size of the training set for evaluation.")
+    optimizer_group.add_argument("--test_size", type=int, default=20, help="Size of the test set for evaluation.")
+
     # Parse arguments
     args = parser.parse_args()
 
+    if args.run_optimizer:
+        if args.run_optimizer == "aflow":
+            if not args.optimized_path:
+                args.optimized_path = f"example/aflow/{args.benchmark}/optimization"
+
+            if os.path.exists(args.optimized_path):
+                timestamp = time.strftime("%Y%m%d_%H%M%S")
+                args.optimized_path = f"{args.optimized_path}_{timestamp}"
+
+            from example.aflow.run_aflow_optimize import run_aflow_optimization
+            print("\n" + "=" * 80)
+            print(f"Running AFlow Optimizer ({datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')})")
+            print("=" * 80)
+            print(f"Benchmark: {args.benchmark}")
+            print(f"Graph Path: {args.graph_path}")
+            print(f"Optimized Path: {args.optimized_path}")
+            print("=" * 80 + "\n")
+            
+            # Run optimization and get the path to the final graph
+            optimized_graph_path = run_aflow_optimization(args)
+            
+            # Set up to run the benchmark on the optimized agent
+            args.agent_system = "single_agent"  # AFlow's executor is a single_agent
+            args.agent_graph_config = optimized_graph_path
+
+            print("\n" + "=" * 80)
+            print("AFlow optimization finished. Now running benchmark on the optimized agent...")
+            print(f"Optimized graph: {optimized_graph_path}")
+            print("=" * 80 + "\n")
+        else:
+            print(f"Unknown optimizer: {args.run_optimizer}", file=sys.stderr)
+            return 1
+        # The script will now continue to the benchmark run part below
+    
     # Build agent configuration for MCP tool integration
     agent_config = {}
     if args.use_mcp_tools:
@@ -141,6 +204,7 @@ def main():
                 agent_system=args.agent_system,
                 agent_config=agent_config if agent_config else None,
                 verbose=args.verbose,
+                data_id=args.data_id,
                 concurrency=args.concurrency,
             ))
         else:
@@ -150,7 +214,8 @@ def main():
                 limit=args.limit,
                 agent_system=args.agent_system,
                 agent_config=agent_config if agent_config else None,
-                verbose=args.verbose
+                verbose=args.verbose,
+                data_id=args.data_id,
             )
         logger.info(f"Benchmark summary: {summary}")
         return 0

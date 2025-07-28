@@ -21,6 +21,7 @@
 * **🧱 Modular Design**: Swap agents, tools, datasets, prompts, and evaluators with ease.
 * **📦 Built-in Benchmarks**: Single/multi-agent datasets for direct comparison.
 * **📊 Visual Debugging**: Inspect interactions, accuracy, and tool use.
+* **🤖 Automated Workflow Optimization**: Automatically optimize agent workflows using LLM-driven evolutionary algorithms.
 * **🔧 Tool Support**:  Manage tool selection via pluggable wrappers.
 * **🧩 Easy Extensions**: Add agents via subclassing—no core changes.
 * **📂 Paired Datasets & Evaluators**: Add new benchmarks with minimal effort.
@@ -59,7 +60,11 @@ OPENAI_API_BASE=https://api.openai.com/v1
 ### 3. Running Benchmarks
 
 ```bash
-./run_benchmark.sh
+# Run a standard benchmark (e.g., math with supervisor_mas agent)
+./run_benchmark.sh math supervisor_mas 10
+
+# Run the AFlow optimizer on the humaneval benchmark
+./run_benchmark.sh humaneval single_agent 10 "" "" aflow
 ```
 * Supported benchmarks: 
   * Math: `math`, `aime`
@@ -88,6 +93,8 @@ For comprehensive guides, tutorials, and API references, visit our complete [doc
 
 We warmly welcome contributions from the community!
 
+**📋 For detailed contribution guidelines, testing procedures, and development setup, please see [CONTRIBUTING.md](docs/quick_start/CONTRIBUTING.md).**
+
 You can contribute in many ways:
 
 * 🧠 **New Agent Systems (MAS):**
@@ -101,3 +108,13 @@ You can contribute in many ways:
 
 * ⚙️ **Improvements & Utilities:**
   Help with performance optimization, failure handling, asynchronous processing, or new visualizations.
+
+### Quick Start for Contributors
+
+1. **Fork and Clone**: Fork the repository and clone it locally
+2. **Setup Environment**: Install dependencies with `pip install -r requirements.txt`
+3. **Run Tests**: Execute `pytest tests/` to ensure everything works
+4. **Make Changes**: Implement your feature with corresponding tests
+5. **Submit PR**: Create a pull request with a clear description
+
+Our automated CI/CD pipeline will run tests on every pull request to ensure code quality and reliability.

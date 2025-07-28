@@ -29,12 +29,15 @@ class SingleAgent(AgentSystem):
         """Initialize the Single Agent System"""
         super().__init__(name, config)
         self.config = config or {}
-        
-        self.model_name = self.config.get("model_name") or os.getenv("MODEL_NAME", "qwen-plus")  # Use qwen-plus
+
+        self.model_name = self.config.get("model_name") or os.getenv("MODEL_NAME", "gpt-4o-mini")
         self.system_prompt = self.config.get("system_prompt", "") + self.format_prompt
 
         # Initialize evaluator and metrics collector through base class methods
-        self.client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"), base_url=os.getenv("OPENAI_API_BASE"))
+        if "api_key" in config and config["api_key"] and "api_base" in config and config["api_base"]:
+            self.client = AsyncOpenAI(api_key=config["api_key"], base_url=config["api_base"])
+        else:
+            self.client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"), base_url=os.getenv("OPENAI_API_BASE"))
 
     async def run_agent(self, problem: Dict[str, Any], **kwargs) -> Dict[str, Any]:
         """
@@ -49,7 +52,7 @@ class SingleAgent(AgentSystem):
             Dictionary of run results including messages with usage metadata
         """
         problem_text = problem["problem"]
-    
+
         # Prepare messages
         messages = [
             {"role": "system", "content": self.system_prompt},
@@ -61,13 +64,13 @@ class SingleAgent(AgentSystem):
             model=self.model_name,
             messages=messages
         )
-        
+
         # Extract content from response
         response_content = response.choices[0].message.content
         response_content = response_content.replace('\r\n', '\n').replace('\r', '\n').strip()
         with contextlib.suppress(UnicodeDecodeError):
-            response_content = response_content.encode('utf-8').decode('utf-8-sig')  # Remove BOM
-        
+            # Remove BOM
+            response_content = response_content.encode('utf-8').decode('utf-8-sig')
 
         # Create message object with usage metadata
         # The base class expects AIMessage-like objects or dicts.
@@ -79,6 +82,15 @@ class SingleAgent(AgentSystem):
             'message_type': 'ai_response',
             'usage_metadata': response.usage
         }
+
+        if "parser" in kwargs or "parse_mode" in kwargs:
+            parser = kwargs.get("parser", None)
+            parse_mode = kwargs.get("parse_mode", "str")
+            response_format = self.parse_generated_text(response_content, parser=parser, parse_mode=parse_mode)
+            return {
+                "messages": [ai_message],
+                "final_answer": response_format
+            }
 
         # Return the response and message with usage metadata for the evaluate method
         return {
