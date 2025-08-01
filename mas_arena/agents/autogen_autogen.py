@@ -1,5 +1,4 @@
-import asyncio
-from typing import Dict, Any, List
+from typing import Dict, Any
 
 from autogen_agentchat.agents import AssistantAgent
 from autogen_ext.models.openai import OpenAIChatCompletionClient
@@ -56,6 +55,7 @@ class DDD(AgentSystem):
             }
             allmessage.append(ai_message)
         return allmessage
+    
     async def run_agent(self, problem: Dict[str, Any], **kwargs) -> Dict[str, Any]: 
         
         problem_text = problem["problem"]
@@ -97,9 +97,12 @@ class DDD(AgentSystem):
             all_messages = all_messages[:-1]
 
         await self.model_client.close()
+        print(all_messages)
         return {
             "messages": all_messages,
             "final_answer": final_answer
         }
 
 AgentSystemRegistry.register("ddd", DDD)
+
+
