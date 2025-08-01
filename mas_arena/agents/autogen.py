@@ -1,5 +1,5 @@
 import os
-from typing import Dict, Any, List
+from typing import Dict, Any
 from openai import AsyncOpenAI
 from dotenv import load_dotenv
 from mas_arena.agents.base import AgentSystem, AgentSystemRegistry
