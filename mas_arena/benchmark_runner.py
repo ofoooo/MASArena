@@ -1,24 +1,21 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 """
-Simple Benchmark Runner Interface
+Benchmark Runner
 
-This module provides a simplified interface for running benchmarks on multi-agent systems.
+This module provides functionality for running benchmarks on agent systems.
 """
 
 import os
 import json
 import random
-import subprocess
-import sys
 import shutil
-import tempfile
 from pathlib import Path
 from datetime import datetime
 import asyncio
 from tqdm.asyncio import tqdm
 from openai.types.completion_usage import CompletionUsage
 import traceback
-from concurrent.futures import ThreadPoolExecutor
 from rich import print as rprint
 
 from mas_arena.metrics import (
@@ -86,7 +83,7 @@ class BenchmarkRunner:
         registry = MetricsRegistry()
         return registry
 
-    def _prepare_benchmark(self, benchmark_name, data_path, limit, agent_system, agent_config, verbose):
+    def _prepare_benchmark(self, benchmark_name, data_path, limit, agent_system, agent_config, verbose, data_id=None):
         """
         Run a benchmark with the specified configuration.
 
@@ -126,10 +123,19 @@ class BenchmarkRunner:
         agent.set_metrics_registry(self.metrics_registry)
 
         try:
-            with open(data_path, "r") as f:
+            with open(data_path, "r", encoding="utf-8") as f:
                 problems = [json.loads(line) for line in f]
         except FileNotFoundError:
             raise FileNotFoundError(f"Data file not found: {data_path}")
+
+        if data_id:
+            primary_id = benchmark_config.get("normalization_keys", {}).get("id", None)
+            if primary_id is not None:
+                for problem in problems:
+                    if str(problem[primary_id]) == data_id:
+                        problems = [problem]
+                        break
+
 
         if limit and limit < len(problems):
             problems = random.sample(problems, limit)
@@ -364,16 +370,16 @@ class BenchmarkRunner:
             print(f"    --output_dir {failure_output_dir}")
             # print("-" * 80)
             rprint("\n[bold]Alternative analysis methods:[/bold]")
-            print(f"# For comprehensive analysis:")
+            print(f"#\n For comprehensive analysis:")
             print(f"python {failure_inference_script} --method all_at_once --model gpt-4.1 --directory_path {failed_responses_dir} --output_dir {failure_output_dir}")
-            print(f"# For efficient error localization in long conversations:")
+            print(f"#\n For efficient error localization in long conversations:")
             print(f"python {failure_inference_script} --method binary_search --model gpt-4.1 --directory_path {failed_responses_dir} --output_dir {failure_output_dir}")
             print(f"\n# For detailed incremental analysis:")
             print(f"python {failure_inference_script} --method step_by_step --model gpt-4.1 --directory_path {failed_responses_dir} --output_dir {failure_output_dir}")
 
             print("=" * 80)
 
-    def run(self, benchmark_name="math", data_path=None, limit=None, agent_system="single_agent", agent_config=None, verbose=True):
+    def run(self, benchmark_name="math", data_path=None, limit=None, agent_system="single_agent", agent_config=None, verbose=True, data_id=None):
         """
         Run a benchmark sequentially. This is a wrapper around arun.
         """
@@ -384,12 +390,14 @@ class BenchmarkRunner:
             agent_system=agent_system,
             agent_config=agent_config,
             verbose=verbose,
+            data_id=data_id,
             concurrency=1  # Run sequentially
         ))
 
-    async def arun(self, benchmark_name="math", data_path=None, limit=None, agent_system="single_agent", agent_config=None, verbose=True, concurrency=10):
-        agent, problems, benchmark_config, output_file = self._prepare_benchmark(
-            benchmark_name, data_path, limit, agent_system, agent_config, verbose
+    async def arun(self, benchmark_name="math", data_path=None, limit=None, agent_system="single_agent", agent_config=None, verbose=True, data_id=None, concurrency=10):
+        # Prepare benchmark; we only need problems and config here
+        _, problems, benchmark_config, output_file = self._prepare_benchmark(
+            benchmark_name, data_path, limit, agent_system, agent_config, verbose, data_id
         )
 
         if verbose:
@@ -403,12 +411,12 @@ class BenchmarkRunner:
 
         async def process_with_semaphore(i, p):
             async with semaphore:
-                return await self._process_one_problem(i, p, agent, benchmark_config, verbose)
+                # Create a fresh agent instance per problem to isolate state
+                new_agent = create_agent_system(agent_system, self.agent_config)
+                new_agent.set_metrics_registry(self.metrics_registry)
+                return await self._process_one_problem(i, p, new_agent, benchmark_config, verbose)
 
-        tasks = [
-            process_with_semaphore(i, p)
-            for i, p in enumerate(problems)
-        ]
+        tasks = [process_with_semaphore(i, p) for i, p in enumerate(problems)]
         
         all_results = await tqdm.gather(*tasks, desc="Processing Problems")
 
